@@ -2009,8 +2009,20 @@ void init_gmm(py::module &_m) {
         like = -(weight.Value1()+weight.Value2()) / acoustic_scale;
         GetPerFrameAcousticCosts(decoded, &per_frame_loglikes);
         per_frame_loglikes.Scale(-1 / acoustic_scale);
+
+        int32 T = features.NumRows();
+        int32 N = trans_model.NumPdfs();
+        Matrix<BaseFloat> per_frame_ll(T, N);
+        for (int32 t = 0; t < T; t++) {
+          for (int32 p = 0; p < N; p++) {
+            per_frame_ll(t, p) = decodable.LogLikelihood(t, p);
+          }
+        }
+        // Optionally, scale by -1/acoustic_scale if needed.
+        per_frame_ll.Scale(-1.0 / acoustic_scale);
+
           py::gil_scoped_acquire gil_acquire;
-        return py::make_tuple(alignment, words, like, per_frame_loglikes, ans, retried);
+        return py::make_tuple(alignment, words, like, per_frame_ll, ans, retried);
           },
         py::arg("trans_model"),
         py::arg("am_gmm"),
